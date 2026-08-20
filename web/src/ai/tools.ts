@@ -186,6 +186,19 @@ export const ACTION_BRIDGE_TOOLS: { functionDeclarations: GeminiFunctionDeclarat
         required: ['target'],
       },
     },
+
+    {
+      name: 'run_agent_task',
+      description: 'Execute a multi-step autonomous screen-control task across Android apps.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          task: { type: 'STRING', description: 'The goal to achieve' },
+          app: { type: 'STRING', description: 'Optional app to launch first' }
+        },
+        required: ['task'],
+      },
+    },
   ],
 };
 
@@ -273,3 +286,19 @@ export async function executeNativeToolCall(
     };
   }
 }
+
+
+// Added Agent Feature Interface
+export interface RiyaAgentNative {
+  isAccessibilityEnabled: () => boolean;
+  openAccessibilitySettings: () => string;
+  getUiHierarchy: () => string;
+  getForegroundPackage: () => string;
+  isSensitiveApp: (pkg: string) => boolean;
+  tap: (x: number, y: number) => string;
+  swipe: (sX: number, sY: number, eX: number, eY: number, duration: number) => string;
+  typeText: (text: string) => string;
+  pressBack: () => string;
+  pressHome: () => string;
+}
+declare global { interface Window { RiyaAgentNative?: RiyaAgentNative; } }
