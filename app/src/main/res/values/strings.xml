@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Riya</string>
+    <string name="accessibility_service_description">Autonomous screen-control agent service for Riya AI Companion to navigate, tap, scroll, and assist with on-device tasks.</string>
+</resources>

@@ -1,0 +1,6 @@
+{
+  "name": "Riya",
+  "description": "Anime-style AI companion with real-time 3D avatar and live voice conversation powered by Gemini Live API",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

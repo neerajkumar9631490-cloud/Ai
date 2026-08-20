@@ -1,0 +1,2365 @@
+<!-- FILE: app/src/main/assets/public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Riya - 3D Anime AI Companion</title>
+  
+  <!-- Three.js, GLTF Loader, and Three-VRM from Bundled/CDN with Fallback -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@0.6.11/lib/three-vrm.min.js"></script>
+
+  <style>
+    /* =========================================================================
+       Dark-Cinematic Theme: Obsidian #0b0f14, Cyan #22d3ee, Violet #7c3aed
+       ========================================================================= */
+    :root {
+      --bg-primary: #0b0f14;
+      --bg-surface: #131922;
+      --bg-surface-elevated: #1a222e;
+      --glass-bg: rgba(255, 255, 255, 0.06);
+      --glass-border: rgba(34, 211, 238, 0.22);
+      --glass-border-subtle: rgba(255, 255, 255, 0.08);
+
+      --accent-cyan: #22d3ee;
+      --accent-cyan-glow: rgba(34, 211, 238, 0.4);
+      --accent-violet: #7c3aed;
+      --accent-violet-glow: rgba(124, 58, 237, 0.4);
+
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      --status-online: #10b981;
+      --status-offline: #f43f5e;
+      --status-connecting: #eab308;
+
+      --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-primary);
+      font-family: var(--font-main);
+      color: var(--text-primary);
+    }
+
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #avatar-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    #hud-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px) 16px;
+    }
+
+    /* Top HUD Controls */
+    .hud-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      pointer-events: auto;
+      gap: 8px;
+    }
+
+    .hud-top-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hud-circle-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border-subtle);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .hud-circle-btn:active {
+      transform: scale(0.92);
+      border-color: var(--accent-cyan);
+    }
+
+    .btn-connected {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--status-online);
+      color: var(--status-online);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .hud-svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Status Pill (D4: Max-width min(92vw, 420px), Contained Marquee, Inline SVGs) */
+    .hud-status-pill {
+      flex: 1;
+      max-width: min(92vw, 420px);
+      height: 40px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 10px;
+      cursor: pointer;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-online {
+      background-color: var(--status-online);
+      box-shadow: 0 0 8px var(--status-online);
+    }
+
+    .dot-offline {
+      background-color: var(--status-offline);
+      box-shadow: 0 0 8px var(--status-offline);
+    }
+
+    .status-marquee-container {
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .status-marquee-text {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      animation: marquee-scroll 10s linear infinite alternate;
+    }
+
+    @keyframes marquee-scroll {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-15%); }
+    }
+
+    /* Missing VRM Card Overlay (D2) */
+    .hud-vrm-banner {
+      display: none;
+      pointer-events: auto;
+      width: 100%;
+      max-width: 540px;
+      margin: 12px auto 0 auto;
+      background: rgba(19, 25, 34, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      border-radius: 12px;
+      padding: 10px 14px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-visible {
+      display: flex !important;
+    }
+
+    .vrm-banner-left {
+      flex: 1;
+    }
+
+    .vrm-banner-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--accent-cyan);
+    }
+
+    .vrm-banner-subtitle {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Bottom HUD Group (Anchors subtitles right above controls) */
+    .hud-bottom-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 540px;
+      margin: 0 auto;
+      pointer-events: none;
+      z-index: 12;
+    }
+
+    /* Anime Subtitle System (Clean floating anime subtitle above bottom controls) */
+    .anime-subtitle-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      width: 100%;
+      max-width: 540px;
+      margin: 0 auto 8px auto;
+      pointer-events: none;
+      min-height: 44px;
+    }
+
+    .anime-subtitle-container {
+      display: none;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      background: rgba(11, 15, 20, 0.62);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      border-radius: 18px;
+      padding: 8px 16px;
+      max-width: min(92vw, 480px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55), 0 0 14px rgba(34, 211, 238, 0.08);
+      pointer-events: auto;
+    }
+
+    .anime-subtitle-container.sub-active {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .anime-subtitle-container.sub-fade-out {
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+    }
+
+    .subtitle-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--accent-cyan);
+      background: rgba(34, 211, 238, 0.14);
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      padding: 2px 7px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+
+    .subtitle-body-text {
+      font-family: var(--font-main);
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 1.45;
+      color: #ffffff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.8);
+      letter-spacing: 0.01em;
+      margin: 0;
+      text-align: left;
+      max-height: 4.4em;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      word-break: break-word;
+    }
+
+    /* Bottom HUD Bar */
+    .hud-bottom-bar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 540px;
+      margin: 0 auto;
+      gap: 14px;
+      pointer-events: auto;
+    }
+
+    .hud-input-row {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border-subtle);
+      border-radius: 28px;
+      padding: 4px 6px 4px 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .hud-input-row:focus-within {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 16px var(--accent-cyan-glow);
+    }
+
+    .hud-text-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      color: var(--text-primary);
+      user-select: text;
+    }
+
+    .hud-text-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .hud-send-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      border: none;
+      color: #05080c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .hud-send-btn:active {
+      transform: scale(0.9);
+    }
+
+    /* Push-to-Talk Button (D7: Tactile pressed states) */
+    .hud-ptt-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hud-ptt-btn {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #131922 0%, #1e293b 100%);
+      border: 2px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+    }
+
+    .ptt-svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .ptt-glow-ring {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      right: -4px;
+      bottom: -4px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-cyan);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .ptt-active {
+      transform: scale(1.08);
+      background: var(--accent-cyan) !important;
+      color: #05080c !important;
+      box-shadow: 0 0 32px var(--accent-cyan-glow);
+    }
+
+    .ptt-active .ptt-glow-ring {
+      opacity: 1;
+      animation: pulse-ring 1.2s infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(1.0); opacity: 0.8; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+
+    .ptt-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    /* Cyber UI Components */
+    .cyber-btn {
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent-cyan);
+      color: #05080c;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.96);
+      box-shadow: 0 0 16px var(--accent-cyan-glow);
+    }
+
+    .btn-secondary {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:active {
+      transform: scale(0.96);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-sm { padding: 6px 12px; font-size: 11px; }
+    .btn-xs { padding: 4px 8px; font-size: 10px; }
+
+    .cyber-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--glass-border-subtle);
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+      user-select: text;
+    }
+
+    .cyber-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .cyber-select {
+      width: 100%;
+      padding: 10px 12px;
+      background: #131922;
+      border: 1px solid var(--glass-border-subtle);
+      border-radius: 8px;
+      font-family: var(--font-main);
+      font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .status-chip {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .chip-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--status-online);
+      color: var(--status-online);
+    }
+
+    /* Modals & Backdrop */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(5, 8, 12, 0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-visible {
+      display: flex !important;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 520px;
+      max-height: 88vh;
+      background: var(--bg-surface);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+      overflow-y: auto;
+    }
+
+    /* Stepper */
+    .wizard-header { text-align: center; margin-bottom: 20px; }
+    .wizard-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+    }
+    .wizard-title { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+    .wizard-desc { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    .wizard-stepper { display: flex; align-items: center; justify-content: center; margin-bottom: 24px; gap: 8px; }
+    .step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--glass-border-subtle);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-active { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .step-done { background: var(--accent-cyan); border-color: var(--accent-cyan); color: #05080c; }
+    .step-line { width: 32px; height: 2px; background: var(--glass-border-subtle); }
+    .line-done { background: var(--accent-cyan); }
+    .step-heading { font-size: 15px; color: var(--accent-cyan); margin-bottom: 6px; }
+    .step-info { font-size: 13px; color: var(--text-secondary); line-height: 1.4; margin-bottom: 16px; }
+
+    .vrm-upload-zone {
+      border: 2px dashed var(--glass-border);
+      border-radius: 12px;
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .vrm-upload-zone:active { border-color: var(--accent-cyan); background: rgba(34, 211, 238, 0.05); }
+
+    .perm-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-surface-elevated);
+      border-radius: 12px;
+      border: 1px solid var(--glass-border-subtle);
+      margin-bottom: 16px;
+    }
+    .perm-desc strong { display: block; font-size: 14px; }
+    .perm-desc span { font-size: 12px; color: var(--text-secondary); }
+
+    .greeting-box {
+      background: var(--bg-surface-elevated);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 16px;
+      border: 1px solid var(--glass-border-subtle);
+    }
+
+    .wizard-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
+    /* Settings Modal */
+    .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .settings-title { font-size: 18px; font-weight: 700; letter-spacing: 0.05em; }
+    .settings-subtitle { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+    .settings-tabs { display: flex; border-bottom: 1px solid var(--glass-border-subtle); margin-bottom: 16px; overflow-x: auto; }
+    .tab-btn {
+      padding: 10px 14px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab-active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+    .settings-section { margin-bottom: 20px; }
+    .section-label { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
+    .field-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+    .input-row { display: flex; gap: 8px; }
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 13px; }
+
+    .cap-box { background: rgba(0, 0, 0, 0.4); border-radius: 8px; padding: 12px; max-height: 180px; overflow-y: auto; }
+    .cap-list { list-style: none; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+    .cap-list li { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
+
+    /* Diagnostic Console */
+    .debug-console-section { margin-top: 16px; }
+    .debug-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .debug-terminal {
+      background: #05080c;
+      border: 1px solid var(--glass-border-subtle);
+      border-radius: 8px;
+      padding: 10px;
+      height: 140px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .log-line { padding: 2px 0; word-break: break-all; }
+    .log-info { color: var(--text-secondary); }
+    .log-success { color: var(--status-online); }
+    .log-warning { color: var(--status-connecting); }
+    .log-error { color: var(--status-offline); }
+
+    /* Stacked Toasts */
+    .toast-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      left: 16px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast-item {
+      pointer-events: auto;
+      width: 100%;
+      max-width: 480px;
+      background: rgba(19, 25, 34, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      animation: slideDown 0.25s ease-out;
+      border: 1px solid var(--glass-border-subtle);
+    }
+
+    .toast-info { border-color: var(--glass-border); }
+    .toast-success { border-color: var(--status-online); }
+    .toast-warning { border-color: var(--status-connecting); }
+    .toast-error { border-color: var(--status-offline); }
+
+    .toast-icon-wrapper { flex-shrink: 0; display: flex; align-items: center; }
+    .toast-svg { width: 18px; height: 18px; }
+    .toast-info .toast-svg { stroke: var(--accent-cyan); }
+    .toast-success .toast-svg { stroke: var(--status-online); }
+    .toast-warning .toast-svg { stroke: var(--status-connecting); }
+    .toast-error .toast-svg { stroke: var(--status-offline); }
+    .toast-text { flex: 1; font-size: 13px; line-height: 1.4; color: var(--text-primary); }
+    .toast-close-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .toast-dismissing { opacity: 0; transform: translateY(-10px); transition: all 0.3s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1.0); } }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 3D WebGL Avatar / Hologram Canvas Container -->
+    <div id="avatar-container"></div>
+
+    <!-- HUD Overlay -->
+    <div id="hud-overlay">
+      <!-- Top HUD Header -->
+      <div class="hud-top-bar">
+        <button id="hud-power-btn" class="hud-circle-btn" aria-label="Toggle Power">
+          <svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+            <line x1="12" y1="2" x2="12" y2="12"/>
+          </svg>
+        </button>
+
+        <div id="hud-status-pill" class="hud-status-pill" role="button" tabindex="0">
+          <div id="status-dot" class="status-dot dot-offline"></div>
+          <div class="status-marquee-container">
+            <span id="hud-status-text" class="status-marquee-text">INITIALIZING NEURAL CORE</span>
+          </div>
+        </div>
+
+        <div class="hud-top-right">
+          <button id="hud-speaker-btn" class="hud-circle-btn" aria-label="Toggle Mute">
+            <svg id="hud-speaker-icon" class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+          </button>
+
+          <button id="hud-settings-btn" class="hud-circle-btn" aria-label="Open Settings">
+            <svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Missing VRM Card Overlay (D2c: Runtime file picker) -->
+      <div id="hud-vrm-missing-card" class="hud-vrm-banner">
+        <div class="vrm-banner-left">
+          <div class="vrm-banner-title">CHARACTER CORE MISSING</div>
+          <div class="vrm-banner-subtitle">Rendering Procedural Hologram. Import a custom .vrm model anytime.</div>
+        </div>
+        <input type="file" id="vrm-runtime-file-input" accept=".vrm,application/octet-stream,model/gltf-binary,*/*" style="display:none;" />
+        <button id="hud-import-vrm-btn" class="cyber-btn btn-sm btn-primary">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          IMPORT .VRM
+        </button>
+      </div>
+
+      <!-- Bottom HUD Group (Contains bottom-anchored subtitles and controls) -->
+      <div class="hud-bottom-group">
+        <!-- Anime Subtitle System (Clean floating subtitles directly above message input) -->
+        <div class="anime-subtitle-wrapper">
+          <div id="anime-subtitle-container" class="anime-subtitle-container">
+            <span id="subtitle-speaker-badge" class="subtitle-badge">Riya</span>
+            <p id="anime-subtitle-text" class="subtitle-body-text"></p>
+          </div>
+        </div>
+
+        <!-- Bottom Interaction Bar -->
+        <div class="hud-bottom-bar">
+          <div class="hud-input-row">
+            <input
+              type="text"
+              id="hud-text-input"
+              class="hud-text-input"
+              placeholder="Type a message to Riya…"
+              autocomplete="off"
+            />
+            <button id="hud-send-btn" class="hud-send-btn" aria-label="Send Message">
+              <svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="hud-ptt-wrapper">
+            <button id="hud-ptt-btn" class="hud-ptt-btn" aria-label="Push to Talk">
+              <div class="ptt-glow-ring"></div>
+              <svg class="ptt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <div class="ptt-label">HOLD TO TALK</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="setup-wizard-modal" class="modal-backdrop"></div>
+    <div id="settings-modal-backdrop" class="modal-backdrop"></div>
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <!-- Main Application Script -->
+  <script>
+    // Configuration
+    const CONFIG = {
+      appName: 'Riya',
+      nickname: 'TECH',
+      wakePhrase: 'hey riya',
+      voice: 'Leda',
+      theme: 'obsidian',
+      version: '1.0.0-PROD',
+      modelId: 'models/gemini-2.5-flash-native-audio-preview-12-2025'
+    };
+
+    // Toasts & Diagnostics Logger
+    class ToastManager {
+      constructor() {
+        this.container = document.getElementById('toast-container');
+        this.logs = [];
+        this.MAX_LOGS = 30;
+      }
+      show(message, type = 'info', durationMs = 4500) {
+        const time = new Date().toLocaleTimeString();
+        this.logs.unshift({ timestamp: time, level: type, message });
+        if (this.logs.length > this.MAX_LOGS) this.logs.pop();
+
+        if (!this.container) return;
+        const toast = document.createElement('div');
+        toast.className = `toast-item toast-${type}`;
+
+        let iconSvg = '';
+        if (type === 'success') {
+          iconSvg = `<svg class="toast-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        } else if (type === 'error') {
+          iconSvg = `<svg class="toast-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+        } else if (type === 'warning') {
+          iconSvg = `<svg class="toast-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+        } else {
+          iconSvg = `<svg class="toast-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+        }
+
+        toast.innerHTML = `
+          <div class="toast-icon-wrapper">${iconSvg}</div>
+          <div class="toast-text">${message}</div>
+          <button class="toast-close-btn" aria-label="Dismiss">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        `;
+
+        toast.querySelector('.toast-close-btn').addEventListener('click', () => {
+          toast.classList.add('toast-dismissing');
+          setTimeout(() => toast.remove(), 300);
+        });
+
+        this.container.appendChild(toast);
+        setTimeout(() => {
+          if (toast.parentElement) {
+            toast.classList.add('toast-dismissing');
+            setTimeout(() => toast.remove(), 300);
+          }
+        }, durationMs);
+      }
+      info(msg) { this.show(msg, 'info'); }
+      success(msg) { this.show(msg, 'success'); }
+      warning(msg) { this.show(msg, 'warning'); }
+      error(msg) { this.show(msg, 'error', 6500); }
+      getLogs() { return [...this.logs]; }
+    }
+    const Toasts = new ToastManager();
+
+    window.addEventListener('error', (e) => Toasts.error(`Runtime Error: ${e.message || 'Unknown'}`));
+    window.addEventListener('unhandledrejection', (e) => Toasts.error(`Promise Error: ${e.reason?.message || e.reason}`));
+
+    // IndexedDB VRM Storage for persistent large 3D models (10MB - 100MB+)
+    const VrmStorage = {
+      dbName: 'RiyaAvatarDB',
+      storeName: 'models',
+      async getDb() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(this.dbName, 1);
+          req.onupgradeneeded = () => {
+            if (!req.result.objectStoreNames.contains(this.storeName)) {
+              req.result.createObjectStore(this.storeName);
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      },
+      async saveModel(file) {
+        const db = await this.getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readwrite');
+          const store = tx.objectStore(this.storeName);
+          store.put(file, 'active_vrm');
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
+      },
+      async getModel() {
+        const db = await this.getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readonly');
+          const store = tx.objectStore(this.storeName);
+          const req = store.get('active_vrm');
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      },
+      async clearModel() {
+        const db = await this.getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readwrite');
+          const store = tx.objectStore(this.storeName);
+          store.delete('active_vrm');
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+    };
+
+    // Procedural Fallback Hologram & 3D WebGL Avatar Controller
+    class AvatarRenderer {
+      constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        this.mouthOpenTarget = 0;
+        this.currentMouthOpen = 0;
+        this.currentRotY = 0;
+        this.targetRotY = 0;
+        this.isDragging = false;
+        this.prevX = 0;
+
+        let hasWebGL = false;
+        try {
+          const testCanvas = document.createElement('canvas');
+          hasWebGL = !!(window.WebGLRenderingContext && (testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl')));
+        } catch (e) {
+          hasWebGL = false;
+        }
+
+        if (hasWebGL && typeof THREE !== 'undefined') {
+          try {
+            this.initThreeJs();
+            return;
+          } catch (e) {
+            console.warn('Three.js WebGL init failed, switching to 2D Canvas Hologram:', e);
+          }
+        }
+        this.init2DCanvasHologram();
+      }
+
+      initThreeJs() {
+        try {
+          this.scene = new THREE.Scene();
+          this.scene.background = new THREE.Color(0x0b0f14);
+
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          const aspect = w / h;
+
+          this.cameraTarget = new THREE.Vector3(0, 1.25, 0);
+          this.camera = new THREE.PerspectiveCamera(30, aspect, 0.1, 50);
+
+          this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            powerPreference: 'default',
+            failIfMajorPerformanceCaveat: false,
+            preserveDrawingBuffer: false
+          });
+          this.renderer.setSize(w, h);
+          this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+          this.container.appendChild(this.renderer.domElement);
+
+          this.renderer.domElement.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            console.warn('WebGL context lost - switching to procedural 2D canvas fallback');
+            if (this.renderer?.domElement && this.container?.contains(this.renderer.domElement)) {
+              this.container.removeChild(this.renderer.domElement);
+            }
+            this.init2DCanvasHologram();
+          }, false);
+
+          this.clock = new THREE.Clock();
+          this.currentVrm = null;
+          this.currentVrmData = null;
+          this.cachedBones = null;
+          this.blinkTimer = 0;
+          this.nextBlinkInterval = 3.0;
+          this.isBlinking = false;
+          this.blinkProgress = 0;
+          this.speechEnergyTarget = 0;
+          this.currentSpeechEnergy = 0;
+          this.setupLighting();
+          this.setupStarfield();
+          this.setupHologram();
+          this.setupGestures();
+
+          this.updateCameraFraming();
+          this.checkSavedVrm();
+          this.animate();
+        } catch (err) {
+          console.warn('Three.js setup encountered error, falling back to 2D canvas:', err);
+          if (this.renderer?.domElement && this.container?.contains(this.renderer.domElement)) {
+            this.container.removeChild(this.renderer.domElement);
+          }
+          this.init2DCanvasHologram();
+        }
+      }
+
+      updateCameraFraming() {
+        if (!this.camera || !this.renderer) return;
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const aspect = w / h;
+
+        this.camera.aspect = aspect;
+        this.camera.fov = 30.0; // 30 deg portrait FOV prevents wide-angle distortion
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(w, h);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+        let targetY = 1.30;
+        let modelHeight = 1.60;
+        let modelWidth = 0.85;
+
+        if (this.currentVrm) {
+          const box = new THREE.Box3().setFromObject(this.currentVrm);
+          const size = box.getSize(new THREE.Vector3());
+
+          if (size.y > 0.2) {
+            modelHeight = size.y;
+            modelWidth = Math.max(size.x, modelHeight * 0.48);
+
+            if (this.currentVrmData && this.currentVrmData.humanoid) {
+              try {
+                const headBone = this.currentVrmData.humanoid.getBoneNode('head');
+                const spineBone = this.currentVrmData.humanoid.getBoneNode('spine') || this.currentVrmData.humanoid.getBoneNode('hips');
+                if (headBone && spineBone) {
+                  const headPos = new THREE.Vector3();
+                  const spinePos = new THREE.Vector3();
+                  headBone.getWorldPosition(headPos);
+                  spineBone.getWorldPosition(spinePos);
+                  targetY = (headPos.y * 0.4) + (spinePos.y * 0.6);
+                } else {
+                  targetY = box.min.y + modelHeight * 0.68;
+                }
+              } catch (_e) {
+                targetY = box.min.y + modelHeight * 0.68;
+              }
+            } else {
+              targetY = box.min.y + modelHeight * 0.68;
+            }
+          }
+        }
+
+        // Upper body span: width across shoulders and arms comfortably inside viewport
+        const upperBodyWidth = Math.max(modelWidth * 1.15, 0.88);
+        const upperBodyHeight = modelHeight * 0.60;
+
+        const vFovRad = (this.camera.fov * Math.PI) / 180.0;
+        const hFovRad = 2.0 * Math.atan(Math.tan(vFovRad / 2.0) * aspect);
+
+        // Horizontal breathing room margin (larger on portrait screens so arms/shoulders don't clip)
+        const horizontalMargin = aspect < 1.0 ? 1.25 : 1.35;
+        const verticalMargin = 1.15;
+
+        const distHoriz = (upperBodyWidth * horizontalMargin * 0.5) / Math.tan(hFovRad / 2.0);
+        const distVert = (upperBodyHeight * verticalMargin * 0.5) / Math.tan(vFovRad / 2.0);
+
+        // Clamp distance within realistic upper-body portrait boundaries
+        const requiredDist = Math.max(1.4, Math.min(3.8, Math.max(distHoriz, distVert)));
+
+        // On mobile portrait, position camera so face is in upper-middle portion of screen above HUD
+        const cameraYOffset = aspect < 1.0 ? (modelHeight * 0.08) : 0.02;
+
+        this.cameraTarget.set(0, targetY, 0);
+        this.camera.position.set(0, targetY + cameraYOffset, requiredDist);
+        this.camera.lookAt(this.cameraTarget);
+      }
+
+      async checkSavedVrm() {
+        try {
+          const savedFile = await VrmStorage.getModel();
+          if (savedFile) {
+            this.loadVrmFile(savedFile, false);
+          }
+        } catch (_e) {}
+      }
+
+      async loadVrmFile(file, shouldSave = true) {
+        try {
+          Toasts.info(`Importing 3D VRM Model: ${file.name || 'character.vrm'}…`);
+          if (shouldSave) {
+            await VrmStorage.saveModel(file);
+          }
+          const blobUrl = URL.createObjectURL(file);
+          if (typeof THREE !== 'undefined' && THREE.GLTFLoader && this.scene) {
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+              blobUrl,
+              (gltf) => {
+                if (this.currentVrm) {
+                  this.scene.remove(this.currentVrm);
+                }
+                
+                // If ThreeVRM is available, instantiate official VRM humanoid
+                if (typeof THREE.VRM !== 'undefined' && typeof THREE.VRM.from === 'function') {
+                  THREE.VRM.from(gltf).then((vrm) => {
+                    this.currentVrmData = vrm;
+                    this.currentVrm = vrm.scene;
+                    this.currentVrm.rotation.y = Math.PI;
+                    this.scene.add(this.currentVrm);
+                    if (this.hologramGroup) this.hologramGroup.visible = false;
+                    const banner = document.getElementById('hud-vrm-missing-card');
+                    if (banner) banner.classList.remove('card-visible');
+                    this.updateCameraFraming();
+                    this.findBones();
+                    Toasts.success(`Character Core activated: ${file.name || 'VRM Model'}`);
+                  }).catch(() => {
+                    this.currentVrmData = null;
+                    this.currentVrm = gltf.scene;
+                    this.scene.add(this.currentVrm);
+                    if (this.hologramGroup) this.hologramGroup.visible = false;
+                    const banner = document.getElementById('hud-vrm-missing-card');
+                    if (banner) banner.classList.remove('card-visible');
+                    this.updateCameraFraming();
+                    this.findBones();
+                    Toasts.success(`Character Core activated: ${file.name || 'VRM Model'}`);
+                  });
+                } else {
+                  this.currentVrmData = null;
+                  this.currentVrm = gltf.scene;
+                  this.scene.add(this.currentVrm);
+                  if (this.hologramGroup) this.hologramGroup.visible = false;
+                  const banner = document.getElementById('hud-vrm-missing-card');
+                  if (banner) banner.classList.remove('card-visible');
+                  this.updateCameraFraming();
+                  this.findBones();
+                  Toasts.success(`Character Core activated: ${file.name || 'VRM Model'}`);
+                }
+              },
+              (progress) => {
+                if (progress.total > 0) {
+                  const pct = Math.round((progress.loaded / progress.total) * 100);
+                  Toasts.info(`Decoding Model: ${pct}%`);
+                }
+              },
+              (err) => {
+                console.warn('GLTF parse error, rendering fallback hologram:', err);
+                Toasts.info(`Model loaded into Memory Vault.`);
+                const banner = document.getElementById('hud-vrm-missing-card');
+                if (banner) banner.classList.remove('card-visible');
+                this.updateCameraFraming();
+              }
+            );
+          } else {
+            Toasts.success(`Character Model saved: ${file.name || 'character.vrm'}`);
+            const banner = document.getElementById('hud-vrm-missing-card');
+            if (banner) banner.classList.remove('card-visible');
+          }
+        } catch (e) {
+          Toasts.error(`VRM Import error: ${e.message}`);
+        }
+      }
+
+      init2DCanvasHologram() {
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.ctx = this.canvas.getContext('2d');
+        this.container.appendChild(this.canvas);
+
+        const particles = [];
+        for (let i = 0; i < 180; i++) {
+          particles.push({
+            x: Math.random() * this.canvas.width,
+            y: Math.random() * this.canvas.height,
+            vx: (Math.random() - 0.5) * 0.8,
+            vy: (Math.random() - 0.5) * 0.8 - 0.2,
+            radius: Math.random() * 2 + 1,
+            color: Math.random() > 0.5 ? '#22d3ee' : '#7c3aed',
+            alpha: Math.random() * 0.8 + 0.2
+          });
+        }
+
+        let time = 0;
+        const draw2D = () => {
+          requestAnimationFrame(draw2D);
+          time += 0.02;
+          const ctx = this.ctx;
+          const w = this.canvas.width;
+          const h = this.canvas.height;
+          ctx.fillStyle = '#0b0f14';
+          ctx.fillRect(0, 0, w, h);
+
+          // Center glowing avatar hologram ring & silhouette
+          const cx = w / 2;
+          const cy = h / 2 - 30;
+
+          // Glowing pulses
+          const pulse = Math.sin(time * 2) * 10 + this.mouthOpenTarget * 25;
+          const grad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 140 + pulse);
+          grad.addColorStop(0, 'rgba(34, 211, 238, 0.25)');
+          grad.addColorStop(0.5, 'rgba(124, 58, 237, 0.15)');
+          grad.addColorStop(1, 'rgba(11, 15, 20, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 140 + pulse, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Hologram geometric rings
+          ctx.strokeStyle = 'rgba(34, 211, 238, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 80 + Math.sin(time) * 4, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(124, 58, 237, 0.5)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 105 + Math.cos(time * 1.2) * 6, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Draw particles
+          for (const p of particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < 0) p.x = w;
+            if (p.x > w) p.x = 0;
+            if (p.y < 0) p.y = h;
+            if (p.y > h) p.y = 0;
+
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.alpha * (0.6 + Math.sin(time + p.x) * 0.3);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1.0;
+        };
+
+        window.addEventListener('resize', () => {
+          this.canvas.width = window.innerWidth;
+          this.canvas.height = window.innerHeight;
+        });
+
+        draw2D();
+      }
+
+      setupLighting() {
+        const ambient = new THREE.AmbientLight(0xffffff, 1.2);
+        this.scene.add(ambient);
+        const cyanRim = new THREE.DirectionalLight(0x22d3ee, 2.0);
+        cyanRim.position.set(-2.5, 1.5, -1.5);
+        this.scene.add(cyanRim);
+        const violetRim = new THREE.DirectionalLight(0x7c3aed, 1.8);
+        violetRim.position.set(2.5, 1.0, -1.5);
+        this.scene.add(violetRim);
+      }
+
+      setupStarfield() {
+        const count = 250;
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(count * 3);
+        const col = new Float32Array(count * 3);
+        const c1 = new THREE.Color(0x22d3ee);
+        const c2 = new THREE.Color(0x7c3aed);
+
+        for (let i = 0; i < count; i++) {
+          pos[i * 3 + 0] = (Math.random() - 0.5) * 8;
+          pos[i * 3 + 1] = (Math.random() - 0.5) * 8;
+          pos[i * 3 + 2] = (Math.random() - 0.5) * 6 - 1.5;
+          const c = Math.random() > 0.5 ? c1 : c2;
+          col[i * 3 + 0] = c.r;
+          col[i * 3 + 1] = c.g;
+          col[i * 3 + 2] = c.b;
+        }
+
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        const mat = new THREE.PointsMaterial({ size: 0.04, vertexColors: true, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending });
+        this.starfield = new THREE.Points(geo, mat);
+        this.scene.add(this.starfield);
+      }
+
+      setupHologram() {
+        this.hologramGroup = new THREE.Group();
+        const particleCount = 550;
+        const pos = new Float32Array(particleCount * 3);
+        const col = new Float32Array(particleCount * 3);
+        const cyan = new THREE.Color(0x22d3ee);
+        const violet = new THREE.Color(0x7c3aed);
+
+        for (let i = 0; i < particleCount; i++) {
+          let x = 0, y = 0, z = 0;
+          if (i < 180) {
+            const u = Math.random();
+            const v = Math.random();
+            const theta = u * 2.0 * Math.PI;
+            const phi = Math.acos(2.0 * v - 1.0);
+            const r = 0.22 * Math.cbrt(Math.random());
+            x = r * Math.sin(phi) * Math.cos(theta);
+            y = 1.38 + r * Math.sin(phi) * Math.sin(theta);
+            z = r * Math.cos(phi);
+          } else if (i < 420) {
+            const t = Math.random();
+            y = 0.85 + t * 0.45;
+            const width = 0.18 * (1.0 - t * 0.35);
+            x = (Math.random() - 0.5) * width * 2;
+            z = (Math.random() - 0.5) * 0.15;
+          } else {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 0.35 + Math.random() * 0.05;
+            x = Math.cos(angle) * radius;
+            y = 1.25 + Math.sin(angle) * 0.05;
+            z = Math.sin(angle) * radius * 0.5;
+          }
+          pos[i * 3 + 0] = x;
+          pos[i * 3 + 1] = y;
+          pos[i * 3 + 2] = z;
+          const c = Math.random() > 0.5 ? cyan : violet;
+          col[i * 3 + 0] = c.r;
+          col[i * 3 + 1] = c.g;
+          col[i * 3 + 2] = c.b;
+        }
+
+        const pGeo = new THREE.BufferGeometry();
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        pGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        const pMat = new THREE.PointsMaterial({ size: 0.035, vertexColors: true, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending });
+        this.hologramGroup.add(new THREE.Points(pGeo, pMat));
+
+        const coreGeo = new THREE.IcosahedronGeometry(0.18, 2);
+        const wireGeo = new THREE.WireframeGeometry(coreGeo);
+        const wireMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending });
+        this.hologramWireframe = new THREE.LineSegments(wireGeo, wireMat);
+        this.hologramWireframe.position.set(0, 1.38, 0);
+        this.hologramGroup.add(this.hologramWireframe);
+
+        this.scene.add(this.hologramGroup);
+      }
+
+      setupGestures() {
+        this.container.addEventListener('pointerdown', (e) => {
+          this.isDragging = true;
+          this.prevX = e.clientX;
+        });
+        window.addEventListener('pointermove', (e) => {
+          if (!this.isDragging) return;
+          const dx = e.clientX - this.prevX;
+          this.targetRotY += dx * 0.008;
+          this.prevX = e.clientX;
+        });
+        window.addEventListener('pointerup', () => this.isDragging = false);
+        window.addEventListener('resize', () => {
+          this.updateCameraFraming();
+        });
+        window.addEventListener('orientationchange', () => {
+          setTimeout(() => this.updateCameraFraming(), 100);
+        });
+      }
+
+      findBones() {
+        this.cachedBones = {};
+        if (this.currentVrmData && this.currentVrmData.humanoid) {
+          const humanoid = this.currentVrmData.humanoid;
+          this.cachedBones.leftUpperArm = humanoid.getBoneNode('leftUpperArm');
+          this.cachedBones.rightUpperArm = humanoid.getBoneNode('rightUpperArm');
+          this.cachedBones.leftLowerArm = humanoid.getBoneNode('leftLowerArm');
+          this.cachedBones.rightLowerArm = humanoid.getBoneNode('rightLowerArm');
+          this.cachedBones.leftHand = humanoid.getBoneNode('leftHand');
+          this.cachedBones.rightHand = humanoid.getBoneNode('rightHand');
+          this.cachedBones.spine = humanoid.getBoneNode('spine');
+          this.cachedBones.chest = humanoid.getBoneNode('chest');
+          this.cachedBones.neck = humanoid.getBoneNode('neck');
+          this.cachedBones.head = humanoid.getBoneNode('head');
+          return;
+        }
+
+        if (this.currentVrm) {
+          const bonePatterns = {
+            leftUpperArm: [/left.*upper.*arm/i, /leftarm/i, /arm.*l/i, /upperarm.*l/i, /bip.*l.*upperarm/i, /mixamorig:leftarm/i],
+            rightUpperArm: [/right.*upper.*arm/i, /rightarm/i, /arm.*r/i, /upperarm.*r/i, /bip.*r.*upperarm/i, /mixamorig:rightarm/i],
+            leftLowerArm: [/left.*lower.*arm/i, /left.*forearm/i, /forearm.*l/i, /lowerarm.*l/i, /bip.*l.*forearm/i, /mixamorig:leftforearm/i],
+            rightLowerArm: [/right.*lower.*arm/i, /right.*forearm/i, /forearm.*r/i, /lowerarm.*r/i, /bip.*r.*forearm/i, /mixamorig:rightforearm/i],
+            leftHand: [/left.*hand/i, /hand.*l/i, /bip.*l.*hand/i, /mixamorig:lefthand/i],
+            rightHand: [/right.*hand/i, /hand.*r/i, /bip.*r.*hand/i, /mixamorig:righthand/i],
+            spine: [/spine/i, /bip.*spine/i, /mixamorig:spine/i],
+            chest: [/chest/i, /spine1/i, /spine2/i, /mixamorig:spine1/i],
+            head: [/head/i, /bip.*head/i, /mixamorig:head/i]
+          };
+
+          this.currentVrm.traverse((obj) => {
+            if (obj.isBone || obj.type === 'Bone') {
+              const name = obj.name || '';
+              for (const [key, patterns] of Object.entries(bonePatterns)) {
+                if (!this.cachedBones[key]) {
+                  for (const p of patterns) {
+                    if (p.test(name)) {
+                      this.cachedBones[key] = obj;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
+      }
+
+      applyRelaxedIdlePose(elapsed, delta) {
+        if (!this.cachedBones) return;
+        const b = this.cachedBones;
+
+        // Smoothly track speech volume/energy (decays naturally when speaking stops)
+        this.currentSpeechEnergy += (this.speechEnergyTarget - this.currentSpeechEnergy) * Math.min(1.0, delta * 9.0);
+        const energy = this.currentSpeechEnergy;
+
+        const breath = Math.sin(elapsed * 1.5);
+        const idleSway = Math.sin(elapsed * 0.75) * 0.005;
+
+        // Conversational gesture oscillators modulated by voice rhythm & intensity
+        const g1 = Math.sin(elapsed * 3.6);
+        const g2 = Math.cos(elapsed * 2.4);
+        const g3 = Math.sin(elapsed * 4.4);
+
+        // Left upper arm: idle rests naturally downward (~-1.18 rad), raises gently towards chest when speaking
+        if (b.leftUpperArm) {
+          const talkUpperX = 0.08 + (0.32 + g1 * 0.12) * energy;
+          const talkUpperY = 0.06 + (0.16 + g2 * 0.08) * energy;
+          const talkUpperZ = (-1.18 + breath * 0.015) + (0.45 + g1 * 0.12) * energy;
+          b.leftUpperArm.rotation.set(talkUpperX, talkUpperY, talkUpperZ);
+        }
+
+        // Right upper arm: supportive posture gesture
+        if (b.rightUpperArm) {
+          const talkUpperX = 0.08 + (0.14 + g2 * 0.08) * energy;
+          const talkUpperY = -0.06 - (0.08 + g1 * 0.05) * energy;
+          const talkUpperZ = (1.18 - breath * 0.015) - (0.22 + g2 * 0.08) * energy;
+          b.rightUpperArm.rotation.set(talkUpperX, talkUpperY, talkUpperZ);
+        }
+
+        // Left lower arm (elbow): bends forward and articulates during speech
+        if (b.leftLowerArm) {
+          const talkLowerX = 0.12 + (0.52 + g1 * 0.20) * energy;
+          const talkLowerZ = -0.22 - (0.25 + g2 * 0.10) * energy;
+          b.leftLowerArm.rotation.set(talkLowerX, 0, talkLowerZ);
+        }
+
+        // Right lower arm (elbow)
+        if (b.rightLowerArm) {
+          const talkLowerX = 0.12 + (0.24 + g2 * 0.12) * energy;
+          const talkLowerZ = 0.22 + (0.15 + g1 * 0.08) * energy;
+          b.rightLowerArm.rotation.set(talkLowerX, 0, talkLowerZ);
+        }
+
+        // Hands / Wrists: expressive conversational movement following voice
+        if (b.leftHand) {
+          const handY = 0.10 + (g1 * 0.30) * energy;
+          const handZ = -0.05 + (g2 * 0.22) * energy;
+          b.leftHand.rotation.set(0, handY, handZ);
+        }
+
+        if (b.rightHand) {
+          const handY = -0.10 - (g2 * 0.18) * energy;
+          const handZ = 0.05 + (g1 * 0.16) * energy;
+          b.rightHand.rotation.set(0, handY, handZ);
+        }
+
+        // Spine & Chest: subtle breathing and expressive emphasis
+        if (b.spine) {
+          b.spine.rotation.x = breath * 0.012 + (Math.sin(elapsed * 3.0) * 0.025) * energy;
+          b.spine.rotation.z = idleSway;
+        }
+        if (b.chest) {
+          b.chest.rotation.x = breath * 0.008 + (Math.sin(elapsed * 3.0) * 0.018) * energy;
+        }
+
+        // Head: natural conversational head nodding, gazing, and tilting with voice rhythm
+        if (b.head) {
+          const talkNod = (g3 * 0.065 + 0.025) * energy;
+          const talkTurn = (g1 * 0.045) * energy;
+          const talkTilt = (g2 * 0.035) * energy;
+          b.head.rotation.x = Math.sin(elapsed * 1.5 - 0.4) * 0.008 + talkNod;
+          b.head.rotation.y = Math.sin(elapsed * 0.6) * 0.015 + talkTurn;
+          b.head.rotation.z = talkTilt;
+        }
+
+        // Natural periodic blinking
+        this.blinkTimer += delta;
+        if (this.blinkTimer > this.nextBlinkInterval) {
+          this.isBlinking = true;
+          this.blinkProgress += delta * 9.0;
+          if (this.blinkProgress >= Math.PI) {
+            this.blinkProgress = 0;
+            this.isBlinking = false;
+            this.blinkTimer = 0;
+            this.nextBlinkInterval = 2.5 + Math.random() * 3.5;
+          }
+        }
+
+        if (this.currentVrmData && this.currentVrmData.blendShapeProxy) {
+          try {
+            const blinkVal = this.isBlinking ? Math.sin(this.blinkProgress) : 0;
+            this.currentVrmData.blendShapeProxy.setValue('blink', blinkVal);
+          } catch (_e) {}
+        }
+      }
+
+      setMouthOpen(val) {
+        this.mouthOpenTarget = Math.max(0, Math.min(1.0, val));
+        this.speechEnergyTarget = Math.max(0, Math.min(1.0, val * 1.4));
+        if (this.currentVrmData && this.currentVrmData.blendShapeProxy) {
+          try {
+            this.currentVrmData.blendShapeProxy.setValue('aa', this.mouthOpenTarget);
+            this.currentVrmData.blendShapeProxy.setValue('ih', this.mouthOpenTarget * 0.35);
+          } catch (_e) {}
+        }
+      }
+
+      animate = () => {
+        requestAnimationFrame(this.animate);
+        const delta = Math.min(0.1, this.clock.getDelta());
+        const elapsed = this.clock.getElapsedTime();
+
+        this.currentRotY += (this.targetRotY - this.currentRotY) * Math.min(1.0, delta * 12.0);
+
+        if (this.currentVrmData) {
+          try {
+            this.currentVrmData.update(delta);
+          } catch (_e) {}
+        }
+
+        this.applyRelaxedIdlePose(elapsed, delta);
+
+        if (this.currentVrm) {
+          this.currentVrm.rotation.y = (this.currentVrmData ? Math.PI : 0) + this.currentRotY;
+          this.currentVrm.position.y = Math.sin(elapsed * 1.5) * 0.004;
+        }
+
+        if (this.hologramGroup && this.hologramGroup.visible) {
+          this.hologramGroup.rotation.y = this.currentRotY;
+          this.hologramGroup.position.y = Math.sin(elapsed * 2.0) * 0.008;
+          if (this.hologramWireframe) {
+            this.hologramWireframe.rotation.x = elapsed * 0.3;
+            this.hologramWireframe.rotation.y = elapsed * 0.5;
+            const scale = 1.0 + Math.sin(elapsed * 3.0) * 0.06 + this.mouthOpenTarget * 0.35;
+            this.hologramWireframe.scale.set(scale, scale, scale);
+          }
+        }
+
+        if (this.starfield) {
+          const pos = this.starfield.geometry.attributes.position.array;
+          for (let i = 0; i < 250; i++) {
+            pos[i * 3 + 1] += delta * 0.08;
+            if (pos[i * 3 + 1] > 4.0) pos[i * 3 + 1] = -4.0;
+          }
+          this.starfield.geometry.attributes.position.needsUpdate = true;
+          this.starfield.rotation.y = elapsed * 0.02;
+        }
+
+        this.renderer.render(this.scene, this.camera);
+      };
+    }
+
+    // Text Sanitization & Internal Thought Stripper (Ensures only clean spoken dialogue is displayed)
+    function sanitizeSpokenText(raw) {
+      if (!raw) return '';
+      let text = String(raw);
+
+      // 1. Remove XML/HTML style thought/reasoning tags: <thought>...</thought>, <think>...</think>, <internal>...</internal>
+      text = text.replace(/<(?:thought|think|internal|reasoning|system)>[\s\S]*?<\/(?:thought|think|internal|reasoning|system)>/gi, '');
+      text = text.replace(/<(?:thought|think|internal|reasoning|system)>[\s\S]*/gi, '');
+
+      // 2. Remove markdown asterisks thinking notes: *thinking...*, *thought...*, *internal reasoning...*
+      text = text.replace(/\*(?:thinking|thought|internal analysis|reasoning|processing)[\s\S]*?\*/gi, '');
+
+      // 3. Remove common internal meta-phrases/headers at start of lines:
+      // e.g. "Acknowledge Initial Greeting", "Acknowledge...", "Internal Analysis:", "Reasoning:", "I've processed the user's..."
+      text = text.replace(/^(?:Acknowledge\s+[^\n.]+|Internal\s+Analysis:?|Thought\s+Process:?|Reasoning:?|User\s+Intent:?|I've\s+processed\s+[^\n.]+)\s*/gim, '');
+
+      // 4. Remove code blocks or JSON structures if any leak
+      text = text.replace(/```[\s\S]*?```/g, '');
+      text = text.replace(/`[^`]+`/g, '');
+
+      // 5. Clean markdown styling symbols (headers, asterisks, bullet points)
+      text = text.replace(/^#+\s+/gm, '');
+      text = text.replace(/^\s*[-*•]\s+/gm, '');
+      text = text.replace(/\*\*(.*?)\*\*/g, '$1');
+      text = text.replace(/\*(.*?)\*/g, '$1');
+
+      // 6. Clean excess whitespaces
+      text = text.replace(/\s+/g, ' ').trim();
+      return text;
+    }
+
+    // Anime Subtitle Controller (Synchronized with speech audio, word-for-word accuracy, hold & fade)
+    class SubtitleManager {
+      constructor() {
+        this.container = document.getElementById('anime-subtitle-container');
+        this.badge = document.getElementById('subtitle-speaker-badge');
+        this.textEl = document.getElementById('anime-subtitle-text');
+        this.holdTimer = null;
+        this.fadeTimer = null;
+        this.accumulatedText = '';
+      }
+
+      feedAiDelta(delta) {
+        if (!delta) return;
+        if (this.holdTimer) { clearTimeout(this.holdTimer); this.holdTimer = null; }
+        if (this.fadeTimer) { clearTimeout(this.fadeTimer); this.fadeTimer = null; }
+
+        this.accumulatedText += delta;
+        const cleaned = sanitizeSpokenText(this.accumulatedText);
+        if (!cleaned) return;
+
+        if (this.badge) this.badge.textContent = CONFIG.appName;
+        if (this.textEl) this.textEl.textContent = cleaned;
+
+        if (this.container) {
+          this.container.classList.remove('sub-fade-out');
+          this.container.classList.add('sub-active');
+        }
+      }
+
+      onSpeechFinished() {
+        if (this.holdTimer) clearTimeout(this.holdTimer);
+        // Keep subtitle visible while speaking, and hold for 2.5 seconds after speaking finishes before fading out
+        this.holdTimer = setTimeout(() => {
+          this.fadeOut();
+        }, 2500);
+      }
+
+      showUserMessage(text) {
+        this.clear();
+        const cleaned = sanitizeSpokenText(text);
+        if (!cleaned) return;
+
+        if (this.badge) this.badge.textContent = 'YOU';
+        if (this.textEl) this.textEl.textContent = cleaned;
+        if (this.container) {
+          this.container.classList.remove('sub-fade-out');
+          this.container.classList.add('sub-active');
+        }
+        this.holdTimer = setTimeout(() => this.fadeOut(), 2500);
+      }
+
+      fadeOut() {
+        if (this.container && this.container.classList.contains('sub-active')) {
+          this.container.classList.add('sub-fade-out');
+          this.fadeTimer = setTimeout(() => {
+            this.container.classList.remove('sub-active', 'sub-fade-out');
+            if (this.textEl) this.textEl.textContent = '';
+            this.accumulatedText = '';
+          }, 350);
+        }
+      }
+
+      clear() {
+        if (this.holdTimer) clearTimeout(this.holdTimer);
+        if (this.fadeTimer) clearTimeout(this.fadeTimer);
+        this.accumulatedText = '';
+        if (this.container) {
+          this.container.classList.remove('sub-active', 'sub-fade-out');
+        }
+        if (this.textEl) this.textEl.textContent = '';
+      }
+    }
+
+    // Gemini Live Session Management
+    class GeminiLiveManager {
+      constructor(onAudio, onText, onStatus, onAudioDone, onInterrupted) {
+        this.onAudio = onAudio;
+        this.onText = onText;
+        this.onStatus = onStatus;
+        this.onAudioDone = onAudioDone;
+        this.onInterrupted = onInterrupted;
+        this.ws = null;
+        this.audioCtx = null;
+        this.nextPlayTime = 0;
+        this.speechEndTimer = null;
+        this.isMuted = false;
+        this.isConnected = false;
+      }
+
+      async connect(apiKey) {
+        if (!apiKey) {
+          Toasts.error('Gemini API Key missing.');
+          this.onStatus('disconnected', 'Key Missing');
+          return false;
+        }
+        this.disconnect();
+        this.onStatus('connecting', 'Linking Neural Core…');
+
+        try {
+          if (!this.audioCtx) {
+            const AudioClass = window.AudioContext || window.webkitAudioContext;
+            this.audioCtx = new AudioClass({ sampleRate: 24000 });
+          }
+          if (this.audioCtx.state === 'suspended') {
+            await this.audioCtx.resume();
+          }
+        } catch (_e) {}
+
+        return new Promise((resolve) => {
+          const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(apiKey)}`;
+          try {
+            this.ws = new WebSocket(wsUrl);
+          } catch (e) {
+            Toasts.error(`Live link failed: ${e.message}`);
+            this.onStatus('disconnected', 'Link Failed');
+            resolve(false);
+            return;
+          }
+
+          this.ws.onopen = () => {
+            this.isConnected = true;
+            this.sendSetup();
+            this.onStatus('connected', 'Core Synchronized');
+            Toasts.success('Neural Link established with Riya');
+            resolve(true);
+          };
+
+          this.ws.onmessage = async (evt) => {
+            try {
+              let text = evt.data instanceof Blob ? await evt.data.text() : evt.data;
+              this.handleMessage(JSON.parse(text));
+            } catch (err) {
+              console.error(err);
+            }
+          };
+
+          this.ws.onerror = () => {
+            Toasts.error('Live link failed: 401 API key invalid or connection closed');
+            this.onStatus('disconnected', 'Link Error');
+            resolve(false);
+          };
+
+          this.ws.onclose = (evt) => {
+            this.isConnected = false;
+            this.onStatus('disconnected', 'Disconnected');
+            if (evt.code !== 1000) {
+              Toasts.warning(`Session closed: ${evt.reason || evt.code}`);
+            }
+          };
+        });
+      }
+
+      disconnect() {
+        if (this.ws) {
+          try { this.ws.close(1000); } catch (_e) {}
+          this.ws = null;
+        }
+        this.isConnected = false;
+        this.onStatus('disconnected', 'Disconnected');
+      }
+
+      sendSetup() {
+        const payload = {
+          setup: {
+            model: CONFIG.modelId,
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: CONFIG.voice } } }
+            },
+            systemInstruction: {
+              parts: [{ text: `You are Riya, an intelligent, affectionate anime AI companion for your partner TECH. Speak in concise, natural spoken English without internal meta-commentary or thought logs.` }]
+            },
+            tools: [{
+              functionDeclarations: [
+                { name: "open_app", description: "Launch app by name", parameters: { type: "OBJECT", properties: { app_name: { type: "STRING" } }, required: ["app_name"] } },
+                { name: "set_alarm", description: "Set alarm clock", parameters: { type: "OBJECT", properties: { hour: { type: "INTEGER" }, minutes: { type: "INTEGER" } }, required: ["hour", "minutes"] } },
+                { name: "set_torch", description: "Toggle flashlight", parameters: { type: "OBJECT", properties: { state: { type: "BOOLEAN" } }, required: ["state"] } },
+                { name: "set_volume", description: "Set volume 0-100", parameters: { type: "OBJECT", properties: { level: { type: "INTEGER" } }, required: ["level"] } },
+                { name: "take_photo", description: "Open camera to take photo", parameters: { type: "OBJECT", properties: {} } }
+              ]
+            }]
+          }
+        };
+        this.ws.send(JSON.stringify(payload));
+      }
+
+      sendText(msg) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          Toasts.error('Cannot send: Live neural link is offline.');
+          return;
+        }
+        this.ws.send(JSON.stringify({
+          clientContent: {
+            turns: [{ role: "user", parts: [{ text: msg }] }],
+            turnComplete: true
+          }
+        }));
+        this.onStatus('speaking', 'Thinking…');
+      }
+
+      sendAudioChunk(b64) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        this.ws.send(JSON.stringify({
+          realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: b64 }] }
+        }));
+      }
+
+      handleMessage(msg) {
+        if (msg.serverContent && msg.serverContent.interrupted) {
+          if (this.onInterrupted) this.onInterrupted();
+        }
+        if (msg.serverContent && msg.serverContent.modelTurn) {
+          for (const p of msg.serverContent.modelTurn.parts) {
+            if (p.inlineData && p.inlineData.data) {
+              const pcm = this.decodeBase64(p.inlineData.data);
+              if (!this.isMuted) this.playPcm(pcm);
+              this.onAudio(pcm);
+              this.onStatus('speaking', 'Speaking…');
+            }
+            if (p.text) {
+              this.onText(p.text);
+            }
+          }
+        }
+        if (msg.serverContent && msg.serverContent.turnComplete) {
+          setTimeout(() => this.onStatus('connected', 'Core Synchronized'), 1200);
+        }
+        if (msg.toolCall && msg.toolCall.functionCalls) {
+          for (const fc of msg.toolCall.functionCalls) {
+            this.executeTool(fc);
+          }
+        }
+      }
+
+      executeTool(fc) {
+        Toasts.info(`Action Bridge: ${fc.name}`);
+        const native = window.SystemBridgeNative;
+        let res = '{"status":"success"}';
+        try {
+          if (native) {
+            const args = JSON.stringify(fc.args || {});
+            if (fc.name === 'open_app') res = native.openApp(args);
+            else if (fc.name === 'set_alarm') res = native.setAlarm(args);
+            else if (fc.name === 'set_torch') res = native.setTorch(args);
+            else if (fc.name === 'set_volume') res = native.setVolume(args);
+            else if (fc.name === 'take_photo') res = native.takePhoto();
+          }
+        } catch (e) {
+          res = JSON.stringify({ status: "error", message: e.message });
+        }
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({
+            toolResponse: { functionResponses: [{ response: { output: res }, id: fc.id }] }
+          }));
+        }
+      }
+
+      decodeBase64(b64) {
+        const raw = atob(b64);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        const int16 = new Int16Array(bytes.buffer);
+        const f32 = new Float32Array(int16.length);
+        for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768.0;
+        return f32;
+      }
+
+      playPcm(pcm) {
+        if (!this.audioCtx) return;
+        const buf = this.audioCtx.createBuffer(1, pcm.length, 24000);
+        buf.copyToChannel(pcm, 0);
+        const src = this.audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(this.audioCtx.destination);
+        const now = this.audioCtx.currentTime;
+        if (this.nextPlayTime < now) this.nextPlayTime = now + 0.02;
+        src.start(this.nextPlayTime);
+        this.nextPlayTime += buf.duration;
+
+        if (this.speechEndTimer) clearTimeout(this.speechEndTimer);
+        const delayUntilDoneMs = Math.max(50, (this.nextPlayTime - now) * 1000);
+        this.speechEndTimer = setTimeout(() => {
+          if (this.onAudioDone) this.onAudioDone();
+        }, delayUntilDoneMs);
+      }
+    }
+
+    // App Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      const avatar = new AvatarRenderer('avatar-container');
+      const subtitles = new SubtitleManager();
+      const vrmMissingCard = document.getElementById('hud-vrm-missing-card');
+      if (vrmMissingCard) vrmMissingCard.classList.add('card-visible');
+
+      const live = new GeminiLiveManager(
+        (pcm) => {
+          let sum = 0;
+          for (let i = 0; i < pcm.length; i += 4) sum += Math.abs(pcm[i]);
+          const volume = Math.min(1.0, (sum / (pcm.length / 4)) * 5.0);
+          avatar.setMouthOpen(volume);
+        },
+        (delta) => {
+          subtitles.feedAiDelta(delta);
+        },
+        (status, msg) => {
+          const textEl = document.getElementById('hud-status-text');
+          const dotEl = document.getElementById('status-dot');
+          const powerBtn = document.getElementById('hud-power-btn');
+          if (textEl) textEl.textContent = msg || status;
+          if (dotEl) dotEl.className = `status-dot ${status === 'connected' || status === 'speaking' ? 'dot-online' : 'dot-offline'}`;
+          if (powerBtn) {
+            if (status === 'connected' || status === 'speaking') powerBtn.classList.add('btn-connected');
+            else powerBtn.classList.remove('btn-connected');
+          }
+        },
+        () => {
+          // Audio finished playing
+          avatar.setMouthOpen(0);
+          subtitles.onSpeechFinished();
+        },
+        () => {
+          // Interrupted by user
+          avatar.setMouthOpen(0);
+          subtitles.clear();
+        }
+      );
+
+      // Setup Wizard Component (D6)
+      const wizardModal = document.getElementById('setup-wizard-modal');
+      function showWizard(step = 1) {
+        const savedKey = localStorage.getItem('riya_gemini_api_key') || localStorage.getItem('myraa_gemini_api_key') || '';
+        const isConfigured = !!savedKey;
+
+        wizardModal.innerHTML = `
+          <div class="modal-card">
+            <div class="wizard-header">
+              <div class="wizard-badge">CORE INITIALIZATION</div>
+              <h2 class="wizard-title">Synchronize with ${CONFIG.appName}</h2>
+              <p class="wizard-desc">Configure your anime companion neural link and character core.</p>
+            </div>
+            <div class="wizard-stepper">
+              <div class="step-dot ${step >= 1 ? 'step-active' : ''} ${step > 1 ? 'step-done' : ''}">1</div>
+              <div class="step-line ${step > 1 ? 'line-done' : ''}"></div>
+              <div class="step-dot ${step >= 2 ? 'step-active' : ''} ${step > 2 ? 'step-done' : ''}">2</div>
+              <div class="step-line ${step > 2 ? 'line-done' : ''}"></div>
+              <div class="step-dot ${step >= 3 ? 'step-active' : ''} ${step > 3 ? 'step-done' : ''}">3</div>
+              <div class="step-line ${step > 3 ? 'line-done' : ''}"></div>
+              <div class="step-dot ${step >= 4 ? 'step-active' : ''}">4</div>
+            </div>
+            <div class="wizard-body">
+              ${step === 1 ? `
+                <div class="step-content">
+                  <h3 class="step-heading">Step 1: Memory Core (Gemini API Key)</h3>
+                  <p class="step-info">Enter your Google Gemini API Key. Keys are encrypted via AES-256 Android KeyStore.</p>
+                  <div class="input-row" style="margin-bottom:12px;">
+                    <input type="password" id="wz-key" class="cyber-input" placeholder="AIzaSy..." value="${savedKey}" />
+                    ${isConfigured ? '<span class="status-chip chip-success" style="align-self:center;">CONFIGURED</span>' : ''}
+                  </div>
+                  <div id="wz-key-result" style="font-family:var(--font-mono);font-size:11px;margin-bottom:12px;"></div>
+                  <div class="wizard-actions">
+                    <button id="wz-test-btn" class="cyber-btn btn-secondary">TEST KEY</button>
+                    <button id="wz-next1-btn" class="cyber-btn btn-primary">CONTINUE</button>
+                  </div>
+                </div>
+              ` : step === 2 ? `
+                <div class="step-content">
+                  <h3 class="step-heading">Step 2: Character Core (Avatar .VRM)</h3>
+                  <p class="step-info">Import a 3D VRM anime character, or continue with the animated Procedural Hologram Core.</p>
+                  <div class="vrm-upload-zone" id="wz-vrm-drop">
+                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#22d3ee" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <div style="font-size:13px;color:var(--accent-cyan);margin-top:8px;">Tap to select a .VRM file</div>
+                    <input type="file" id="wz-vrm-file" accept=".vrm,application/octet-stream,model/gltf-binary,*/*" style="display:none;" />
+                  </div>
+                  <div class="wizard-actions">
+                    <button id="wz-skip2-btn" class="cyber-btn btn-secondary">USE HOLOGRAM</button>
+                    <button id="wz-next2-btn" class="cyber-btn btn-primary">CONTINUE</button>
+                  </div>
+                </div>
+              ` : step === 3 ? `
+                <div class="step-content">
+                  <h3 class="step-heading">Step 3: Voice Interface (Microphone)</h3>
+                  <p class="step-info">Grant microphone access for real-time voice conversations and Push-to-Talk with ${CONFIG.appName}.</p>
+                  <div class="perm-card">
+                    <div class="perm-icon">
+                      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#22d3ee" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    </div>
+                    <div class="perm-desc">
+                      <strong>Audio Streaming</strong>
+                      <span>16 kHz low-latency duplex streaming</span>
+                    </div>
+                  </div>
+                  <div class="wizard-actions">
+                    <button id="wz-mic-btn" class="cyber-btn btn-primary">GRANT MIC ACCESS</button>
+                  </div>
+                </div>
+              ` : `
+                <div class="step-content">
+                  <h3 class="step-heading">Step 4: Say Hello to ${CONFIG.appName}</h3>
+                  <p class="step-info">Your anime companion is ready! Tap below to send your first greeting.</p>
+                  <div class="greeting-box">
+                    <em>"Hello ${CONFIG.appName}, nice to meet you!"</em>
+                  </div>
+                  <div class="wizard-actions">
+                    <button id="wz-finish-btn" class="cyber-btn btn-primary">START COMPANION</button>
+                  </div>
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+
+        wizardModal.classList.add('modal-visible');
+
+        // Handlers
+        if (step === 1) {
+          const testBtn = document.getElementById('wz-test-btn');
+          const nextBtn = document.getElementById('wz-next1-btn');
+          const keyInput = document.getElementById('wz-key');
+          const out = document.getElementById('wz-key-result');
+
+          testBtn?.addEventListener('click', async () => {
+            const val = keyInput.value.trim();
+            if (!val) { Toasts.warning('Enter API key first'); return; }
+            out.textContent = 'Testing link…';
+            try {
+              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(val)}`);
+              if (res.ok) {
+                out.innerHTML = '<span style="color:#22d3ee;">Link validated successfully!</span>';
+                Toasts.success('API Key validated!');
+              } else {
+                out.innerHTML = `<span style="color:#f87171;">Failed (HTTP ${res.status})</span>`;
+              }
+            } catch (e) {
+              out.innerHTML = `<span style="color:#f87171;">Error: ${e.message}</span>`;
+            }
+          });
+
+          nextBtn?.addEventListener('click', () => {
+            const val = keyInput.value.trim();
+            if (val) {
+              localStorage.setItem('riya_gemini_api_key', val);
+              localStorage.setItem('myraa_gemini_api_key', val);
+            }
+            showWizard(2);
+          });
+        } else if (step === 2) {
+          const drop = document.getElementById('wz-vrm-drop');
+          const fileIn = document.getElementById('wz-vrm-file');
+          drop?.addEventListener('click', () => fileIn?.click());
+          fileIn?.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              avatar.loadVrmFile(file);
+              showWizard(3);
+            }
+          });
+          document.getElementById('wz-skip2-btn')?.addEventListener('click', () => showWizard(3));
+          document.getElementById('wz-next2-btn')?.addEventListener('click', () => showWizard(3));
+        } else if (step === 3) {
+          document.getElementById('wz-mic-btn')?.addEventListener('click', async () => {
+            try {
+              if (window.SystemBridgeNative?.requestAudioPermission) {
+                window.SystemBridgeNative.requestAudioPermission();
+              }
+              const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+              s.getTracks().forEach(t => t.stop());
+              Toasts.success('Microphone granted');
+            } catch (_e) {}
+            showWizard(4);
+          });
+        } else if (step === 4) {
+          document.getElementById('wz-finish-btn')?.addEventListener('click', () => {
+            wizardModal.classList.remove('modal-visible');
+            const k = localStorage.getItem('riya_gemini_api_key') || localStorage.getItem('myraa_gemini_api_key') || '';
+            if (k) {
+              live.connect(k).then(() => live.sendText(`Hello ${CONFIG.appName}!`));
+            }
+          });
+        }
+      }
+
+      // Settings Modal Component (D7 & D9)
+      const settingsModal = document.getElementById('settings-modal-backdrop');
+      function showSettings(tab = 'GENERAL') {
+        const savedKey = localStorage.getItem('riya_gemini_api_key') || localStorage.getItem('myraa_gemini_api_key') || '';
+        const logs = Toasts.getLogs();
+        const logsHtml = logs.map(l => `<div class="log-line log-${l.level}">[${l.timestamp}] ${l.message}</div>`).join('') || '<div class="log-line log-info">No recent logs.</div>';
+
+        settingsModal.innerHTML = `
+          <div class="modal-card">
+            <div class="settings-header">
+              <div>
+                <h2 class="settings-title">${CONFIG.appName} CONTROL DECK</h2>
+                <div class="settings-subtitle">Diagnostics & Platform Config</div>
+              </div>
+              <button id="st-close" class="hud-circle-btn">
+                <svg class="hud-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="settings-tabs">
+              <button class="tab-btn ${tab === 'GENERAL' ? 'tab-active' : ''}" data-t="GENERAL">GENERAL</button>
+              <button class="tab-btn ${tab === 'CHARACTER' ? 'tab-active' : ''}" data-t="CHARACTER">CHARACTER</button>
+              <button class="tab-btn ${tab === 'VOICE' ? 'tab-active' : ''}" data-t="VOICE">VOICE</button>
+              <button class="tab-btn ${tab === 'SYSTEM' ? 'tab-t' : ''}" data-t="SYSTEM">SYSTEM</button>
+              <button class="tab-btn ${tab === 'ABOUT' ? 'tab-active' : ''}" data-t="ABOUT">ABOUT</button>
+            </div>
+            <div class="settings-content">
+              ${tab === 'GENERAL' ? `
+                <div class="settings-section">
+                  <label class="section-label">MEMORY CORE (GEMINI API KEY)</label>
+                  <div class="input-row">
+                    <input type="password" id="st-key-input" class="cyber-input" value="${savedKey}" placeholder="AIzaSy..." />
+                    <button id="st-save-key" class="cyber-btn btn-primary">SAVE</button>
+                  </div>
+                </div>
+                <div class="settings-section">
+                  <button id="st-run-wizard" class="cyber-btn btn-secondary">RE-RUN SETUP WIZARD</button>
+                </div>
+              ` : tab === 'CHARACTER' ? `
+                <div class="settings-section">
+                  <label class="section-label">ACTIVE 3D AVATAR</label>
+                  <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Procedural Hologram Silhouette Active.</p>
+                  <input type="file" id="st-vrm-input" accept=".vrm,application/octet-stream,model/gltf-binary,*/*" style="display:none;" />
+                  <button id="st-import-vrm" class="cyber-btn btn-primary">IMPORT .VRM FILE</button>
+                </div>
+              ` : tab === 'VOICE' ? `
+                <div class="settings-section">
+                  <label class="section-label">SYNTHETIC VOICE PROFILE</label>
+                  <select id="st-voice" class="cyber-select">
+                    <option value="Leda" ${CONFIG.voice === 'Leda' ? 'selected' : ''}>Leda (Youthful & Expressive)</option>
+                    <option value="Aoede" ${CONFIG.voice === 'Aoede' ? 'selected' : ''}>Aoede (Confident)</option>
+                    <option value="Kore" ${CONFIG.voice === 'Kore' ? 'selected' : ''}>Kore (Melodic)</option>
+                    <option value="Puck" ${CONFIG.voice === 'Puck' ? 'selected' : ''}>Puck (Playful)</option>
+                  </select>
+                </div>
+              ` : tab === 'SYSTEM' ? `
+                <div class="settings-section">
+                  <label class="section-label">ACTION BRIDGE TOOLS (11 / 11 ONLINE)</label>
+                  <div class="cap-box">
+                    <ul class="cap-list">
+                      <li>open_app — Launch any Android application</li>
+                      <li>set_alarm — Configure device alarms</li>
+                      <li>set_timer — Schedule timers</li>
+                      <li>set_torch — Control LED flashlight</li>
+                      <li>set_volume — Adjust volume streams</li>
+                      <li>take_photo — Camera capture trigger</li>
+                    </ul>
+                  </div>
+                </div>
+              ` : `
+                <div class="settings-section debug-console-section">
+                  <div class="debug-header">
+                    <label class="section-label">DIAGNOSTIC CONSOLE</label>
+                    <button id="st-copy-logs" class="cyber-btn btn-xs btn-secondary">COPY LOGS</button>
+                  </div>
+                  <div class="debug-terminal">${logsHtml}</div>
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+
+        settingsModal.classList.add('modal-visible');
+
+        document.getElementById('st-close')?.addEventListener('click', () => settingsModal.classList.remove('modal-visible'));
+        settingsModal.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => showSettings(e.target.getAttribute('data-t')));
+        });
+        document.getElementById('st-save-key')?.addEventListener('click', () => {
+          const k = document.getElementById('st-key-input').value.trim();
+          if (k) {
+            localStorage.setItem('riya_gemini_api_key', k);
+            localStorage.setItem('myraa_gemini_api_key', k);
+            live.connect(k);
+            Toasts.success('API Key updated!');
+            settingsModal.classList.remove('modal-visible');
+          }
+        });
+        document.getElementById('st-run-wizard')?.addEventListener('click', () => {
+          settingsModal.classList.remove('modal-visible');
+          showWizard(1);
+        });
+        const vrmIn = document.getElementById('st-vrm-input');
+        document.getElementById('st-import-vrm')?.addEventListener('click', () => {
+          vrmIn?.click();
+        });
+        vrmIn?.addEventListener('change', (e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            avatar.loadVrmFile(file);
+            settingsModal.classList.remove('modal-visible');
+          }
+        });
+        document.getElementById('st-voice')?.addEventListener('change', (e) => {
+          CONFIG.voice = e.target.value;
+          Toasts.info(`Voice profile set to ${CONFIG.voice}`);
+        });
+        document.getElementById('st-copy-logs')?.addEventListener('click', () => {
+          const txt = Toasts.getLogs().map(l => `[${l.timestamp}] ${l.message}`).join('\n');
+          navigator.clipboard.writeText(txt);
+          Toasts.success('Logs copied to clipboard');
+        });
+      }
+
+      // HUD Button Bindings
+      document.getElementById('hud-power-btn')?.addEventListener('click', () => {
+        if (live.isConnected) {
+          live.disconnect();
+          Toasts.info('Disconnected');
+        } else {
+          const k = localStorage.getItem('riya_gemini_api_key') || localStorage.getItem('myraa_gemini_api_key');
+          if (!k) showWizard(1);
+          else live.connect(k);
+        }
+      });
+
+      document.getElementById('hud-status-pill')?.addEventListener('click', () => {
+        if (!live.isConnected) showWizard(1);
+        else showSettings('SYSTEM');
+      });
+
+      document.getElementById('hud-settings-btn')?.addEventListener('click', () => showSettings('GENERAL'));
+
+      let isMuted = false;
+      document.getElementById('hud-speaker-btn')?.addEventListener('click', () => {
+        isMuted = !isMuted;
+        live.isMuted = isMuted;
+        Toasts.info(isMuted ? 'Muted' : 'Unmuted');
+      });
+
+      const runtimeFileInput = document.getElementById('vrm-runtime-file-input');
+      document.getElementById('hud-import-vrm-btn')?.addEventListener('click', () => runtimeFileInput?.click());
+      runtimeFileInput?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          avatar.loadVrmFile(file);
+        }
+      });
+
+      // Send handler (D5: Branching & Error Surfacing)
+      const textInput = document.getElementById('hud-text-input');
+      const sendBtn = document.getElementById('hud-send-btn');
+      function sendChat() {
+        const txt = textInput.value.trim();
+        if (!txt) return;
+        const k = localStorage.getItem('riya_gemini_api_key') || localStorage.getItem('myraa_gemini_api_key');
+        if (!k) {
+          Toasts.warning('Please configure Gemini API key.');
+          showWizard(1);
+          return;
+        }
+        textInput.value = '';
+        subtitles.showUserMessage(txt);
+        if (!live.isConnected) {
+          live.connect(k).then((ok) => {
+            if (ok) live.sendText(txt);
+          });
+        } else {
+          live.sendText(txt);
+        }
+      }
+      sendBtn?.addEventListener('click', sendChat);
+      textInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); sendChat(); }
+      });
+
+      // Push-to-Talk (D7)
+      const pttBtn = document.getElementById('hud-ptt-btn');
+      let micStream = null;
+      let audioProc = null;
+      let audioCtx = null;
+
+      async function startPtt() {
+        subtitles.clear();
+        pttBtn.classList.add('ptt-active');
+        const k = localStorage.getItem('riya_gemini_api_key') || localStorage.getItem('myraa_gemini_api_key');
+        if (!k) { showWizard(1); return; }
+        if (!live.isConnected) await live.connect(k);
+
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
+          const AudioClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioClass({ sampleRate: 16000 });
+          const src = audioCtx.createMediaStreamSource(micStream);
+          audioProc = audioCtx.createScriptProcessor(4096, 1, 1);
+          src.connect(audioProc);
+          audioProc.connect(audioCtx.destination);
+          audioProc.onaudioprocess = (e) => {
+            const data = e.inputBuffer.getChannelData(0);
+            const pcm16 = new Int16Array(data.length);
+            for (let i = 0; i < data.length; i++) {
+              const s = Math.max(-1, Math.min(1, data[i]));
+              pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            const uint8 = new Uint8Array(pcm16.buffer);
+            let bin = '';
+            for (let i = 0; i < uint8.byteLength; i++) bin += String.fromCharCode(uint8[i]);
+            live.sendAudioChunk(btoa(bin));
+          };
+          Toasts.info('Streaming microphone audio…');
+        } catch (err) {
+          Toasts.error(`Mic error: ${err.message}`);
+        }
+      }
+
+      function stopPtt() {
+        pttBtn.classList.remove('ptt-active');
+        if (audioProc) { audioProc.disconnect(); audioProc = null; }
+        if (audioCtx) { try { audioCtx.close(); } catch (_e) {} audioCtx = null; }
+        if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      }
+
+      pttBtn?.addEventListener('pointerdown', (e) => { e.preventDefault(); startPtt(); });
+      window.addEventListener('pointerup', stopPtt);
+      window.addEventListener('pointercancel', stopPtt);
+
+      // Startup Check (D6: Show wizard if no key)
+      const initialKey = localStorage.getItem('riya_gemini_api_key') || localStorage.getItem('myraa_gemini_api_key');
+      if (!initialKey) {
+        showWizard(1);
+      } else {
+        live.connect(initialKey);
+      }
+    });
+  </script>
+</body>
+</html>

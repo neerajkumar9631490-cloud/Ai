@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>MYRAA - 3D Anime AI Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 3D Three.js VRM Avatar Canvas -->
+    <div id="avatar-canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div class="ui-overlay">
+      <!-- Top Status & Utility Bar -->
+      <div class="top-header interactive">
+        <button id="btn-power" class="header-btn" title="Connect/Disconnect Session">⏻</button>
+        <div class="status-pill">
+          <span id="status-dot" class="status-dot disconnected"></span>
+          <span id="status-text" class="status-text">CONNECT MEMORY CORE TO AWAKEN MY VOICE.</span>
+        </div>
+        <button id="btn-speaker" class="header-btn" title="Toggle Voice Mute">🔊</button>
+        <button id="btn-settings" class="header-btn" title="Settings & Capabilities">⚙</button>
+      </div>
+
+      <!-- Live Subtitle Overlay -->
+      <div id="subtitles-box" class="subtitles-container interactive hidden">
+        <div class="subtitles-header">
+          <span class="speaker-badge">MYRAA // LIVE</span>
+          <span id="emotion-badge" class="emotion-tag-badge" style="display: none;">[JOY]</span>
+        </div>
+        <div id="subtitle-body" class="subtitle-body"></div>
+      </div>
+
+      <!-- Bottom Chat & Voice Controls -->
+      <div class="bottom-controls interactive">
+        <!-- Text Chat Input -->
+        <div class="text-chat-bar">
+          <input
+            type="text"
+            id="chat-input"
+            class="chat-input"
+            placeholder="Type a message to [MYRAA]…"
+            autocomplete="off"
+          />
+          <button id="btn-chat-send" class="chat-send-btn" title="Send Message">➤</button>
+        </div>
+
+        <!-- Push to Talk Mic -->
+        <div class="mic-button-row">
+          <button id="btn-mic-ptt" class="mic-ptt-btn" title="Push to Speak">🎙</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
