@@ -9,3 +9,9 @@ web/dist/
 .env.*
 local.properties
 .DS_Store
+
+# Keep local secrets private
+.env
+
+# Do not upload zip backups
+*.zip
