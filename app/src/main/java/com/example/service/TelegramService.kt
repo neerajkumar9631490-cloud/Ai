@@ -8,6 +8,8 @@ class TelegramService : Service() {
     companion object {
         const val ACTION_START = "com.example.telegram.START"
         const val ACTION_STOP = "com.example.telegram.STOP"
+        const val ACTION_REMOTE_TASK = "com.example.telegram.REMOTE_TASK"
+        const val EXTRA_TASK_TEXT = "extra_task_text"
         var isRunning = false; private set
     }
 
