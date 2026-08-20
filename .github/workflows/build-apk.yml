@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,21 +18,18 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
 
-      - name: Create required env files
+      - name: Create dummy env files
         run: |
           touch .env
-          cat > .env.example <<'ENVEOF'
-          GEMINI_API_KEY=
-          GOOGLE_API_KEY=
-          FIREBASE_APPCHECK_DEBUG_TOKEN=
-          MAPS_API_KEY=
-          ENVEOF
+          touch .env.example
 
       - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace --info
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
